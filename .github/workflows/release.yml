@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Check out validated commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 12.3.4
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Validate release commit
+        run: make ci
+
+      - name: Verify commit is the current main tip
+        shell: bash
+        env:
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          CURRENT_MAIN=$(git rev-parse refs/remotes/origin/main)
+          if [[ "$CURRENT_MAIN" != "$RELEASE_COMMIT" ]]; then
+            echo "::error::Validated commit $RELEASE_COMMIT is no longer the current main tip $CURRENT_MAIN."
+            exit 1
+          fi
+
+      - name: Verify release tag
+        id: release-tag
+        uses: ./
+        with:
+          version-file: package.json
+          tag-prefix: v
+          expected-commit: ${{ github.event.workflow_run.head_sha }}
+          policy: allow-missing
+
+      - name: Derive major version tag
+        id: major
+        shell: bash
+        env:
+          VERSION: ${{ steps.release-tag.outputs.version }}
+        run: echo "tag=v${VERSION%%.*}" >> "$GITHUB_OUTPUT"
+
+      - name: Create exact version tag
+        if: steps.release-tag.outputs.tag-exists == 'false'
+        env:
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          VERSION_TAG: ${{ steps.release-tag.outputs.tag }}
+        run: |
+          git tag "$VERSION_TAG" "$RELEASE_COMMIT"
+          git push origin "refs/tags/$VERSION_TAG"
+
+      - name: Update major version tag
+        env:
+          MAJOR_TAG: ${{ steps.major.outputs.tag }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git tag --force "$MAJOR_TAG" "$RELEASE_COMMIT"
+          git push origin "refs/tags/$MAJOR_TAG" --force
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          VERSION_TAG: ${{ steps.release-tag.outputs.tag }}
+        run: |
+          if gh release view "$VERSION_TAG" >/dev/null 2>&1; then
+            echo "Release $VERSION_TAG already exists. Skipping release creation."
+          else
+            gh release create "$VERSION_TAG" \
+              --target "$RELEASE_COMMIT" \
+              --title "$VERSION_TAG" \
+              --notes "Automated release for $VERSION_TAG from commit $RELEASE_COMMIT."
+          fi

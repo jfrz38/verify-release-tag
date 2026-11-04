@@ -1,0 +1,47 @@
+name: Verify Release Tag
+description: Verify that a release tag matches the project version and optionally points to the expected commit.
+author: José F. Ruiz
+
+inputs:
+  version-file:
+    description: JSON file containing the top-level version property.
+    required: false
+    default: package.json
+  tag-prefix:
+    description: Exact prefix concatenated with the declared version.
+    required: false
+    default: v
+  tag:
+    description: Explicit release tag that must match the derived tag.
+    required: false
+  expected-commit:
+    description: Git revision to which an existing tag should resolve.
+    required: false
+  policy:
+    description: Tag existence policy (allow-missing, require-existing, or require-missing).
+    required: false
+    default: allow-missing
+
+outputs:
+  version:
+    description: Version read from the configured JSON file.
+  tag:
+    description: Final validated release tag.
+  tag-exists:
+    description: Whether the exact local tag reference exists.
+  tag-commit:
+    description: Full commit ID to which the tag resolves.
+  expected-commit:
+    description: Full resolved expected commit ID.
+  commit-matches:
+    description: Whether compared commits match, or empty when no comparison occurred.
+  policy:
+    description: Tag existence policy applied by the Action.
+
+runs:
+  using: node24
+  main: dist/index.js
+
+branding:
+  icon: tag
+  color: blue

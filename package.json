@@ -1,0 +1,57 @@
+{
+  "name": "verify-release-tag",
+  "version": "0.1.0",
+  "description": "Read-only GitHub Action that verifies release tag consistency.",
+  "private": true,
+  "license": "MIT",
+  "author": {
+    "name": "José F. Ruiz",
+    "url": "https://github.com/jfrz38"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jfrz38/verify-release-tag.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jfrz38/verify-release-tag/issues"
+  },
+  "homepage": "https://github.com/jfrz38/verify-release-tag#readme",
+  "keywords": [
+    "github-action",
+    "github-actions",
+    "release",
+    "release-tag",
+    "semver",
+    "tag-validation"
+  ],
+  "main": "dist/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "build": "make build",
+    "bundle:check": "make bundle-check",
+    "format": "make format",
+    "format:check": "make format-check",
+    "lint": "make lint",
+    "test": "make test",
+    "typecheck": "make typecheck",
+    "validate": "make validate"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@jfrz38/eslint-plugin-clean-architecture-highlighter": "0.1.1",
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "eslint": "10.14.0",
+    "prettier": "3.9.10",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "@actions/core": "3.0.1"
+  }
+}
